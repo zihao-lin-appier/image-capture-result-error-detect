@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/davidbyttow/govips/v2/vips"
 )
@@ -125,6 +126,10 @@ func main() {
 
 	// Process each image file
 	fmt.Printf("Processing %d image file(s) from %s:\n\n", len(imageFiles), dataDir)
+	
+	// Record start time
+	startTime := time.Now()
+	
 	for _, filePath := range imageFiles {
 		info, err := detectImageType(filePath)
 		if err != nil {
@@ -133,5 +138,9 @@ func main() {
 			fmt.Printf("%s (%dx%d): %s\n", filepath.Base(filePath), info.Width, info.Height, info.Type)
 		}
 	}
+	
+	// Calculate and print elapsed time
+	elapsed := time.Since(startTime)
+	fmt.Printf("\nTotal processing time: %v\n", elapsed)
 }
 
