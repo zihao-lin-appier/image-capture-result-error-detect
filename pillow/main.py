@@ -9,7 +9,6 @@ This tool processes multiple image files and categorizes them into:
 - Mixed pixels images
 """
 
-import os
 import sys
 import time
 from pathlib import Path
@@ -73,6 +72,23 @@ def calculate_gray_value(r, g, b):
     return int(0.299 * r + 0.587 * g + 0.114 * b)
 
 
+def normalize_gray_value(gray_value):
+    """
+    Normalize gray value to range 1-254 for single color images.
+    
+    Args:
+        gray_value: Gray value (0-255)
+        
+    Returns:
+        int: Normalized gray value (1-254)
+    """
+    if gray_value == 0:
+        return 1
+    elif gray_value == 255:
+        return 254
+    return gray_value
+
+
 def detect_image_type(image):
     """
     Detect the type of an image.
@@ -84,10 +100,7 @@ def detect_image_type(image):
         str: Image type description
     """
     # Convert to RGB if necessary (handles RGBA, L, P modes)
-    if image.mode != 'RGB':
-        rgb_image = image.convert('RGB')
-    else:
-        rgb_image = image
+    rgb_image = image if image.mode == 'RGB' else image.convert('RGB')
     
     # Get all pixel data
     pixels = list(rgb_image.getdata())
@@ -111,28 +124,17 @@ def detect_image_type(image):
             return "All white"
         else:
             # Single color (not black or white)
-            gray_value = first_gray
-            # Ensure gray value is in range 1-254 (not black or white)
-            if gray_value == 0:
-                gray_value = 1
-            elif gray_value == 255:
-                gray_value = 254
-            return f"Single color (gray value: {gray_value})"
-    else:
-        # Check if all pixels have the same gray value (but different RGB combinations)
-        all_same_gray = all(calculate_gray_value(*pixel) == first_gray for pixel in pixels)
-        
-        if all_same_gray:
-            # All pixels have the same brightness but different colors
-            # This is still considered "single color" in terms of brightness
-            gray_value = first_gray
-            if gray_value == 0:
-                gray_value = 1
-            elif gray_value == 255:
-                gray_value = 254
-            return f"Single color (gray value: {gray_value})"
-        else:
-            return "Mixed pixels"
+            return f"Single color (gray value: {normalize_gray_value(first_gray)})"
+    
+    # Check if all pixels have the same gray value (but different RGB combinations)
+    all_same_gray = all(calculate_gray_value(*pixel) == first_gray for pixel in pixels)
+    
+    if all_same_gray:
+        # All pixels have the same brightness but different colors
+        # This is still considered "single color" in terms of brightness
+        return f"Single color (gray value: {normalize_gray_value(first_gray)})"
+    
+    return "Mixed pixels"
 
 
 def process_image(image_path):
