@@ -25,7 +25,7 @@ go mod tidy
 
 ## Usage
 
-Run the program:
+Process all images in the `data` folder (default):
 
 ```bash
 go run main.go
@@ -36,4 +36,10 @@ Or build and run:
 ```bash
 go build -o govips main.go
 ./govips
+```
+
+Process images from a custom folder:
+
+```bash
+go run main.go /path/to/image/folder
 ```

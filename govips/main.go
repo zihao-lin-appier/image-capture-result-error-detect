@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -68,7 +69,7 @@ func detectImageType(filePath string) (*ImageInfo, error) {
 	} else if min == 255 && max == 255 {
 		result = "All white"
 	} else if min == max {
-		// All pixels have the same value (but not 0 or 255)
+		// All pixels have the same gray value
 		result = fmt.Sprintf("Single color (gray value: %d)", min)
 	} else {
 		result = "Mixed pixels"
@@ -85,15 +86,38 @@ func main() {
 	vips.Startup(nil)
 	defer vips.Shutdown()
 
-	dataDir := "../data"
+	// Get the default data folder path (project root/data)
+	wd, err := os.Getwd()
+	if err != nil {
+		wd = "."
+	}
+	
+	// If we're in govips folder, go up one level to find data
+	scriptDir := filepath.Base(wd)
+	var defaultDataPath string
+	if scriptDir == "govips" {
+		defaultDataPath = filepath.Join(wd, "..", "data")
+	} else {
+		// Assume we're in project root
+		defaultDataPath = filepath.Join(wd, "data")
+	}
+
+	dataDir := defaultDataPath
 	if len(os.Args) > 1 {
 		dataDir = os.Args[1]
 	}
 
-	// Read all files in the data directory
-	entries, err := os.ReadDir(dataDir)
+	// Resolve absolute path
+	absPath, err := filepath.Abs(dataDir)
 	if err != nil {
-		fmt.Printf("Error reading directory %s: %v\n", dataDir, err)
+		fmt.Printf("Error resolving path: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Read all files in the data directory
+	entries, err := os.ReadDir(absPath)
+	if err != nil {
+		fmt.Printf("Error reading directory %s: %v\n", absPath, err)
 		os.Exit(1)
 	}
 
@@ -114,26 +138,27 @@ func main() {
 		if !entry.IsDir() {
 			ext := strings.ToLower(filepath.Ext(entry.Name()))
 			if imageExts[ext] {
-				imageFiles = append(imageFiles, filepath.Join(dataDir, entry.Name()))
+				imageFiles = append(imageFiles, filepath.Join(absPath, entry.Name()))
 			}
 		}
 	}
 
+	sort.Strings(imageFiles)
+
 	if len(imageFiles) == 0 {
-		fmt.Printf("No image files found in %s\n", dataDir)
-		os.Exit(1)
+		fmt.Printf("No supported image files found in '%s'.\n", absPath)
+		fmt.Printf("Supported formats: %s\n", strings.Join([]string{".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".tiff", ".tif"}, ", "))
+		return
 	}
 
-	// Process each image file
-	fmt.Printf("Processing %d image file(s) from %s:\n\n", len(imageFiles), dataDir)
-	
 	// Record start time
 	startTime := time.Now()
 	
+	// Process each image file
 	for _, filePath := range imageFiles {
 		info, err := detectImageType(filePath)
 		if err != nil {
-			fmt.Printf("%s: ERROR - %v\n", filepath.Base(filePath), err)
+			fmt.Fprintf(os.Stderr, "Error processing %s: %v\n", filepath.Base(filePath), err)
 		} else {
 			fmt.Printf("%s (%dx%d): %s\n", filepath.Base(filePath), info.Width, info.Height, info.Type)
 		}
@@ -141,6 +166,6 @@ func main() {
 	
 	// Calculate and print elapsed time
 	elapsed := time.Since(startTime)
-	fmt.Printf("\nTotal processing time: %v\n", elapsed)
+	fmt.Printf("Total processing time: %.2f milliseconds\n", float64(elapsed.Nanoseconds())/1e6)
 }
 

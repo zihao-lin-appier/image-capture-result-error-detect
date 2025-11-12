@@ -128,7 +128,8 @@ def detect_image_type(img):
         elif gray_value == 255:
             return "All white"
         else:
-            return f"Single color (gray value: {normalize_gray_value(gray_value)})"
+            # gray_value is already in range 1-254 (0 and 255 handled above)
+            return f"Single color (gray value: {gray_value})"
     
     # For BGR images, check if all pixels are identical (same RGB combination)
     if bgr_img is not None:
